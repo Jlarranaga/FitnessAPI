@@ -1,10 +1,10 @@
 
 const express = require('express') // Express docs: http://expressjs.com/en/api.html
 const passport = require('passport') // Passport docs: http://www.passportjs.org/docs/
-
+const axios = require('axios')
 // pull in Mongoose model for exercises
 const Exercise = require('../models/exercise')
-
+require('dotenv').config()
 // this is a collection of methods that help us detect situations when we need
 // to throw a custom error
 const customErrors = require('../../lib/custom_errors')
@@ -32,59 +32,50 @@ const router = express.Router()
 
 // INDEX
 // GET /exercises
-router.get('/exercises', requireToken, (req, res, next) => {
-	Exercise.find()
-		.then((exercises) => {
-			// `exercises` will be an array of Mongoose documents
-			// we want to convert each one to a POJO, so we use `.map` to
-			// apply `.toObject` to each one
-			return exercises.map((exercise) => exercise.toObject())
-		})
-		// respond with status 200 and JSON of the exercises
-		.then((exercises) => res.status(200).json({ exercises: exercises }))
-		// if an error occurs, pass it to the handler
-		.catch(next)
-})
-
-//Search response with all images matching search keywords
-router.post("/exercises", (req, res, next) => {
-  
-	const { search } = req.body;
+router.post("/exercises/search", (req, res, next) => {
+    const { search } = req.query;  // Get the search keyword from the query parameters
 	
-	
-	$.ajax({
-		method: 'GET',
-		url: 'https://api.api-ninjas.com/v1/exercises?muscle=' + search,
-		headers: { 'X-Api-Key': apiKey},
-		contentType: 'application/json',
-		success: function(result) {
-			console.log(result);
-		},
-		error: function ajaxError(jqXHR) {
-			console.error('Error: ', jqXHR.responseText);
-		}
-	});
-
-	// axios(`${imageVideoLib}/search?q=${search}&media_type=image&page_size=50`) //<-- add "/search?q={'KEYWORD HERE'}"
-	//   .then((apiRes) => {
-	// 	const foundData = apiRes.data;
-  
-	// 	res.render("imageVideoLib/imageIndex", { imageVideo: foundData });
-	//   });
+	console.log('API KEY: ',apiKey)
+    axios.get('https://api.api-ninjas.com/v1/exercises', {
+		headers: { 'X-Api-Key': apiKey },
+        params: {
+            muscle: search
+        },
+       
+    })
+    .then((apiRes) => {
+        // Send the result of the external API request back to the client
+        res.status(200).json(apiRes.data);
+    })
+    .catch((error) => {
+        console.error('Error: ', error);
+        res.status(500).json({ error: 'An error occurred while searching for exercises' });
+    });
 });
-
-  
 
 // SHOW
 // GET /exercises/5a7db6c74d55bc51bdf39793
-router.get('/exercises/:id', requireToken, (req, res, next) => {
+router.get('/exercises/:name', (req, res, next) => {
+
+	const { name } = req.params
+	console.log('NAME: ', name )
+	console.log('RE.QUERY: ', req.params)
 	// req.params.id will be set based on the `:id` in the route
-	Exercise.findById(req.params.id)
-		.then(handle404)
-		// if `findById` is succesful, respond with 200 and "exercise" JSON
-		.then((exercise) => res.status(200).json({ exercise: exercise.toObject() }))
-		// if an error occurs, pass it to the handler
-		.catch(next)
+	axios.get('https://api.api-ninjas.com/v1/exercises?name=', {
+		headers: { 'X-Api-Key': apiKey },
+        params: {
+            name: name
+        },
+       
+    })
+    .then((apiRes) => {
+        // Send the result of the external API request back to the client
+        res.status(200).json(apiRes.data);
+    })
+    .catch((error) => {
+        console.error('Error: ', error);
+        res.status(500).json({ error: 'An error occurred while searching for exercises' });
+    });
 })
 
 // CREATE
