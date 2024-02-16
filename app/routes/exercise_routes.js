@@ -30,8 +30,27 @@ const apiKey = process.env.API_KEY;
 // instantiate a router (mini app that only handles routes)
 const router = express.Router()
 
+//INDEX
+//GET /exercises
+//Getting info from this API, if any data is availble
+router.get('/exercises', (req, res, next) => {
+	Exercise.find()
+        .populate('owner')
+		.then((exercises) => {
+			// `exercises` will be an array of Mongoose documents
+			// we want to convert each one to a POJO, so we use `.map` to
+			// apply `.toObject` to each one
+			return exercises.map((e) => e.toObject())
+		})
+		// respond with status 200 and JSON of the pets
+		.then((exercises) => res.status(200).json({ exercises: exercises }))
+		// if an error occurs, pass it to the handler
+		.catch(next)
+})
+
 // INDEX
-// GET /exercises
+// POST /exercises/search
+// Getting info from 3rd party API
 router.post("/exercises/search", (req, res, next) => {
     const { search } = req.query;  // Get the search keyword from the query parameters
 	
@@ -83,10 +102,11 @@ router.get('/exercises/:name', (req, res, next) => {
 router.post('/exercises', requireToken, (req, res, next) => {
 	// set owner of new exercise to be current user
 	req.body.exercise.owner = req.user.id
-
+		console.log('INSIDE CREATE')	
 	Exercise.create(req.body.exercise)
 		// respond to succesful `create` with status 201 and JSON of new "exercise"
 		.then((exercise) => {
+			console.log('Exercise: ', exercise)
 			res.status(201).json({ exercise: exercise.toObject() })
 		})
 		// if an error occurs, pass it off to our error handler
@@ -101,13 +121,14 @@ router.patch('/exercises/:id', requireToken, removeBlanks, (req, res, next) => {
 	// if the client attempts to change the `owner` property by including a new
 	// owner, prevent that by deleting that key/value pair
 	delete req.body.exercise.owner
-
+	console.log('INSIDE PATCH')
 	Exercise.findById(req.params.id)
 		.then(handle404)
 		.then((exercise) => {
 			// pass the `req` object and the Mongoose record to `requireOwnership`
 			// it will throw an error if the current user isn't the owner
 			requireOwnership(req, exercise)
+			console.log('CREATED')
 
 			// pass the result of Mongoose's `.update` to the next `.then`
 			return exercise.updateOne(req.body.exercise)
